@@ -1,0 +1,20 @@
+# API Keys and sensitive data
+.env
+config.js
+secrets.js
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+logs/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+*.swp
+*.swo
