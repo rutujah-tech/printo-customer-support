@@ -22,9 +22,12 @@ class PrintoCSAssistant {
         this.clearAllBtn.addEventListener('click', () => this.clearAll());
         this.copyBtn.addEventListener('click', () => this.copyResponse());
 
-        // Allow Enter + Ctrl/Cmd to submit
+        // Allow Enter + Ctrl/Cmd to submit, or just Enter
         this.questionInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                this.getAIResponse();
+            } else if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 this.getAIResponse();
             }
@@ -47,7 +50,10 @@ class PrintoCSAssistant {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ question })
+                body: JSON.stringify({
+                    question,
+                    customerId: 'default-customer'
+                })
             });
 
             const data = await response.json();

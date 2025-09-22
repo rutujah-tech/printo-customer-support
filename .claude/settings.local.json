@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node server.js)"
+      "Bash(node server.js)",
+      "Bash(npm start)",
+      "Bash(wmic process where:*)"
     ],
     "deny": [],
     "ask": []
