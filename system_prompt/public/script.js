@@ -76,16 +76,7 @@ class PrintoCSAssistant {
     }
 
     displayResponse(response) {
-        // Store the original response for copying
-        this.lastResponse = response;
-
-        // Convert Markdown-style formatting to HTML
-        const formattedResponse = response
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold text
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')              // Italic text
-            .replace(/\n/g, '<br>');                           // Line breaks
-
-        this.responseArea.innerHTML = formattedResponse;
+        this.responseArea.innerHTML = response;
         this.responseArea.style.color = '#495057';
         this.copyBtn.classList.remove('hidden');
 
@@ -120,25 +111,10 @@ class PrintoCSAssistant {
     }
 
     copyResponse() {
-        // Get the original response and remove ALL markdown formatting
-        let cleanText = this.lastResponse || this.responseArea.textContent;
-
-        // Remove markdown formatting thoroughly
-        cleanText = cleanText
-            .replace(/\*\*(.*?)\*\*/g, '$1')    // Remove **bold**
-            .replace(/\*(.*?)\*/g, '$1')        // Remove *italic*
-            .replace(/__(.*?)__/g, '$1')        // Remove __bold__
-            .replace(/_(.*?)_/g, '$1')          // Remove _italic_
-            .replace(/`(.*?)`/g, '$1')          // Remove `code`
-            .replace(/#{1,6}\s*/g, '')          // Remove headers
-            .replace(/^\s*[-*+]\s+/gm, '• ')    // Convert list markers to bullets
-            .replace(/^\s*\d+\.\s+/gm, '')      // Remove numbered lists
-            .trim();
-
-        console.log('Copying text:', cleanText); // Debug log
+        const responseText = this.responseArea.textContent;
 
         if (navigator.clipboard) {
-            navigator.clipboard.writeText(cleanText).then(() => {
+            navigator.clipboard.writeText(responseText).then(() => {
                 this.showNotification('Response copied to clipboard!');
                 this.copyBtn.textContent = '✅ Copied';
                 setTimeout(() => {
@@ -148,7 +124,7 @@ class PrintoCSAssistant {
         } else {
             // Fallback for older browsers
             const textArea = document.createElement('textarea');
-            textArea.value = cleanText;
+            textArea.value = responseText;
             document.body.appendChild(textArea);
             textArea.select();
             document.execCommand('copy');
