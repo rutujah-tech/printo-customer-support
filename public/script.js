@@ -3,6 +3,8 @@ class PrintoCSAssistant {
         this.initializeElements();
         this.bindEvents();
         this.loadHistory();
+        this.setupCharCounter();
+        this.setupAnimations();
     }
 
     initializeElements() {
@@ -15,6 +17,43 @@ class PrintoCSAssistant {
         this.loading = document.getElementById('loading');
         this.historyContainer = document.getElementById('historyContainer');
         this.notification = document.getElementById('notification');
+        this.charCount = document.getElementById('charCount');
+    }
+
+    setupCharCounter() {
+        if (this.questionInput && this.charCount) {
+            const updateCount = () => {
+                const count = this.questionInput.value.length;
+                this.charCount.textContent = count;
+
+                // Color coding for character count
+                if (count > 1000) {
+                    this.charCount.style.color = 'var(--color-warning-600)';
+                } else if (count > 1500) {
+                    this.charCount.style.color = 'var(--color-error-600)';
+                } else {
+                    this.charCount.style.color = 'var(--color-gray-400)';
+                }
+            };
+
+            this.questionInput.addEventListener('input', updateCount);
+            updateCount(); // Initial count
+        }
+    }
+
+    setupAnimations() {
+        // Add entrance animations to panels
+        const panels = document.querySelectorAll('.panel');
+        panels.forEach((panel, index) => {
+            panel.style.opacity = '0';
+            panel.style.transform = 'translateY(20px)';
+
+            setTimeout(() => {
+                panel.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                panel.style.opacity = '1';
+                panel.style.transform = 'translateY(0)';
+            }, 100 + (index * 100));
+        });
     }
 
     bindEvents() {
@@ -85,12 +124,27 @@ class PrintoCSAssistant {
             .replace(/\*(.*?)\*/g, '<em>$1</em>')              // Italic text
             .replace(/\n/g, '<br>');                           // Line breaks
 
-        this.responseArea.innerHTML = formattedResponse;
-        this.responseArea.style.color = '#495057';
-        this.copyBtn.classList.remove('hidden');
+        // Create response content container
+        const responseContent = document.createElement('div');
+        responseContent.className = 'response-content';
+        responseContent.innerHTML = formattedResponse;
 
-        // Scroll response into view
-        this.responseArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        // Clear and update response area with smooth animation
+        this.responseArea.style.opacity = '0';
+        this.responseArea.style.transform = 'translateY(10px)';
+
+        setTimeout(() => {
+            this.responseArea.innerHTML = '';
+            this.responseArea.appendChild(responseContent);
+            this.copyBtn.classList.remove('hidden');
+
+            this.responseArea.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            this.responseArea.style.opacity = '1';
+            this.responseArea.style.transform = 'translateY(0)';
+
+            // Scroll response into view
+            this.responseArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 150);
     }
 
     displayError(error) {
@@ -112,11 +166,40 @@ class PrintoCSAssistant {
     }
 
     clearAll() {
-        this.questionInput.value = '';
-        this.responseArea.innerHTML = '<div class="placeholder">AI response will appear here...</div>';
-        this.responseArea.style.color = '';
-        this.copyBtn.classList.add('hidden');
-        this.questionInput.focus();
+        // Animate clear action
+        this.questionInput.style.transition = 'opacity 0.2s ease';
+        this.responseArea.style.transition = 'opacity 0.2s ease';
+
+        this.questionInput.style.opacity = '0.5';
+        this.responseArea.style.opacity = '0.5';
+
+        setTimeout(() => {
+            this.questionInput.value = '';
+            this.responseArea.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M8 9h8M8 13h6" stroke="currentColor" stroke-width="1.5"/>
+                        </svg>
+                    </div>
+                    <h4>Ready to assist</h4>
+                    <p>Enter a customer question to generate a professional response</p>
+                </div>
+            `;
+            this.copyBtn.classList.add('hidden');
+
+            // Update character count
+            if (this.charCount) {
+                this.charCount.textContent = '0';
+                this.charCount.style.color = 'var(--color-gray-400)';
+            }
+
+            // Restore opacity
+            this.questionInput.style.opacity = '1';
+            this.responseArea.style.opacity = '1';
+            this.questionInput.focus();
+        }, 200);
     }
 
     copyResponse() {
@@ -194,16 +277,28 @@ class PrintoCSAssistant {
 
     renderHistory(history) {
         if (history.length === 0) {
-            this.historyContainer.innerHTML = '<div class="no-history">No queries yet</div>';
+            this.historyContainer.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 8v4l3 3M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" stroke="currentColor" stroke-width="1.5"/>
+                        </svg>
+                    </div>
+                    <p>No recent queries</p>
+                </div>
+            `;
             return;
         }
 
-        const historyHTML = history.map(item => {
+        const historyHTML = history.map((item, index) => {
             const date = new Date(item.timestamp);
-            const timeStr = date.toLocaleString();
+            const timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
 
             return `
-                <div class="history-item" onclick="app.loadHistoryItem(${item.id})">
+                <div class="history-item" onclick="app.loadHistoryItem(${item.id})" style="animation-delay: ${index * 50}ms">
                     <div class="history-question">${item.question}</div>
                     <div class="history-time">${timeStr}</div>
                 </div>
@@ -211,6 +306,21 @@ class PrintoCSAssistant {
         }).join('');
 
         this.historyContainer.innerHTML = historyHTML;
+
+        // Add stagger animation to history items
+        setTimeout(() => {
+            const items = this.historyContainer.querySelectorAll('.history-item');
+            items.forEach((item, index) => {
+                item.style.opacity = '0';
+                item.style.transform = 'translateX(-10px)';
+
+                setTimeout(() => {
+                    item.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    item.style.opacity = '1';
+                    item.style.transform = 'translateX(0)';
+                }, index * 50);
+            });
+        }, 50);
     }
 
     loadHistoryItem(id) {
@@ -226,11 +336,20 @@ class PrintoCSAssistant {
 
     showNotification(message, type = 'success') {
         this.notification.textContent = message;
-        this.notification.className = `notification ${type}`;
+        this.notification.className = `toast ${type}`;
         this.notification.classList.remove('hidden');
 
+        // Animate in
         setTimeout(() => {
-            this.notification.classList.add('hidden');
+            this.notification.style.transform = 'translateX(0)';
+        }, 10);
+
+        // Animate out
+        setTimeout(() => {
+            this.notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                this.notification.classList.add('hidden');
+            }, 250);
         }, 3000);
     }
 }

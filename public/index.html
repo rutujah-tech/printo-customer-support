@@ -4,61 +4,157 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Printo CS Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="logo">
-                <h1>🖨️ Printo CS Assistant</h1>
-                <p>AI-Powered Customer Support Tool</p>
-            </div>
-        </header>
-
-        <main>
-            <div class="chat-container">
-                <div class="input-section">
-                    <label for="customerQuestion">Customer Question:</label>
-                    <textarea
-                        id="customerQuestion"
-                        placeholder="Paste the customer's question here..."
-                        rows="5"
-                    ></textarea>
-
-                    <div class="button-group">
-                        <button id="getResponse" class="primary-btn">
-                            <span id="buttonText">Get AI Response</span>
-                            <div id="loading" class="loading hidden">⏳</div>
-                        </button>
-                        <button id="clearAll" class="secondary-btn">Clear All</button>
+    <div class="app">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-brand">
+                    <div class="logo-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M7 3H17C18.1046 3 19 3.89543 19 5V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3Z" stroke="currentColor" stroke-width="2"/>
+                            <path d="M9 7H15M9 11H15M9 15H13" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <div class="brand-info">
+                        <h1 class="brand-title">Printo Assistant</h1>
                     </div>
                 </div>
-
-                <div class="response-section">
-                    <div class="response-header">
-                        <label>AI Response:</label>
-                        <button id="copyResponse" class="copy-btn hidden">📋 Copy</button>
-                    </div>
-                    <div id="responseArea" class="response-area">
-                        <div class="placeholder">AI response will appear here...</div>
+                <div class="nav-status">
+                    <div class="status-indicator">
+                        <div class="status-dot"></div>
+                        <span>System Active</span>
                     </div>
                 </div>
             </div>
+        </nav>
 
-            <div class="history-section">
-                <h3>Recent Queries</h3>
-                <div id="historyContainer" class="history-container">
-                    <div class="no-history">No queries yet</div>
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-container">
+                <!-- Header Section -->
+                <header class="page-header">
+                    <div class="header-content">
+                        <h2 class="page-title">Customer Support Assistant</h2>
+                        <p class="page-description">
+                            Transform customer queries into professional responses with AI-powered intelligence.
+                        </p>
+                    </div>
+                </header>
+
+                <!-- Chat Interface -->
+                <div class="chat-workspace">
+                    <div class="workspace-grid">
+                        <!-- Input Panel -->
+                        <div class="panel input-panel">
+                            <div class="panel-header">
+                                <h3 class="panel-title">Customer Query</h3>
+                                <div class="panel-actions">
+                                    <button id="clearAll" class="btn btn-ghost btn-sm">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="currentColor" stroke-width="2"/>
+                                        </svg>
+                                        Clear
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div class="textarea-wrapper">
+                                    <textarea
+                                        id="customerQuestion"
+                                        class="input-field"
+                                        placeholder="Enter customer question or inquiry here..."
+                                        rows="6"
+                                    ></textarea>
+                                    <div class="input-footer">
+                                        <div class="input-hint">
+                                            <kbd>Enter</kbd> to submit, <kbd>Shift</kbd>+<kbd>Enter</kbd> for new line
+                                        </div>
+                                        <div class="char-count">
+                                            <span id="charCount">0</span> characters
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="action-bar">
+                                    <button id="getResponse" class="btn btn-primary">
+                                        <span id="buttonText">Generate Response</span>
+                                        <div id="loading" class="spinner hidden"></div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Response Panel -->
+                        <div class="panel response-panel">
+                            <div class="panel-header">
+                                <h3 class="panel-title">AI Response</h3>
+                                <div class="panel-actions">
+                                    <button id="copyResponse" class="btn btn-ghost btn-sm hidden">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                            <path d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2M8 4a2 2 0 012-2h2a2 2 0 012 2v0M8 4a2 2 0 012 2h2a2 2 0 012-2v0" stroke="currentColor" stroke-width="2"/>
+                                        </svg>
+                                        Copy
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="panel-content">
+                                <div id="responseArea" class="response-container">
+                                    <div class="empty-state">
+                                        <div class="empty-icon">
+                                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                                                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="1.5"/>
+                                                <path d="M8 9h8M8 13h6" stroke="currentColor" stroke-width="1.5"/>
+                                            </svg>
+                                        </div>
+                                        <h4>Ready to assist</h4>
+                                        <p>Enter a customer question to generate a professional response</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Section -->
+                <div class="history-workspace">
+                    <div class="panel history-panel">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Recent Queries</h3>
+                            <div class="panel-actions">
+                                <button class="btn btn-ghost btn-sm">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="2"/>
+                                        <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                                    </svg>
+                                    View All
+                                </button>
+                            </div>
+                        </div>
+                        <div class="panel-content">
+                            <div id="historyContainer" class="history-list">
+                                <div class="empty-state">
+                                    <div class="empty-icon">
+                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                                            <path d="M12 8v4l3 3M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" stroke="currentColor" stroke-width="1.5"/>
+                                        </svg>
+                                    </div>
+                                    <p>No recent queries</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
-
-        <footer>
-            <p>&copy; 2024 Printo.in - Customer Support AI Assistant</p>
-        </footer>
     </div>
 
-    <div id="notification" class="notification hidden"></div>
+    <!-- Toast Notifications -->
+    <div id="notification" class="toast hidden"></div>
 
     <script src="script.js"></script>
 </body>
