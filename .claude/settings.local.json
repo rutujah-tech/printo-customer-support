@@ -3,7 +3,9 @@
     "allow": [
       "Bash(node server.js)",
       "Bash(npm start)",
-      "Bash(wmic process where:*)"
+      "Bash(wmic process where:*)",
+      "Bash(powershell:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
