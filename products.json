@@ -142,5 +142,16 @@
     },
     "deliveryTime": "3-4 business days",
     "minQuantity": 100
+  },
+  "qrCodeStandees": {
+    "name": "QR Code Standees",
+    "pricing": {
+      "a4Acrylic": "₹150-250 each",
+      "a3Acrylic": "₹250-400 each",
+      "cardboard": "₹50-100 each",
+      "metalStand": "₹300-500 each"
+    },
+    "deliveryTime": "2-4 business days",
+    "minQuantity": 1
   }
 }

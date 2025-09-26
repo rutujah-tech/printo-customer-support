@@ -39,7 +39,10 @@ function buildPrompt(userMessage, currentDate, currentPricing = '') {
         'poster': 'posters',
         'calendar': 'calendars',
         'notebook': 'notebooks',
-        'envelope': 'envelopes'
+        'envelope': 'envelopes',
+        'qr code standee': 'qrCodeStandees',
+        'qr standee': 'qrCodeStandees',
+        'standee': 'qrCodeStandees'
     };
 
     // Find relevant products mentioned in user message
