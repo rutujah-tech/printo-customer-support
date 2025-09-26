@@ -18,6 +18,14 @@ const openai = new OpenAI({
 // Store conversation history per customer (in-memory storage)
 const conversations = new Map();
 
+// Store session context (questions asked, product interest, requirements gathered)
+const sessions = new Map();
+
+// Generate unique session ID
+function generateSessionId() {
+    return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
 // Function to fetch pricing from printo.in
 async function fetchProductPricing(productQuery) {
     try {
@@ -77,7 +85,7 @@ app.get('/', (req, res) => {
 // Chat endpoint
 app.post('/api/chat', async (req, res) => {
     try {
-        const { question, customerId } = req.body;
+        const { question, customerId, sessionId } = req.body;
 
         if (!question) {
             return res.status(400).json({ error: 'Question is required' });
@@ -87,6 +95,26 @@ app.post('/api/chat', async (req, res) => {
             return res.status(400).json({ error: 'Customer ID is required' });
         }
 
+        // Generate or use existing session ID
+        let currentSessionId = sessionId;
+        if (!currentSessionId) {
+            currentSessionId = generateSessionId();
+        }
+
+        // Get or create session context
+        if (!sessions.has(currentSessionId)) {
+            sessions.set(currentSessionId, {
+                customerId: customerId,
+                productInterest: null,
+                questionsAsked: [],
+                requirements: {},
+                startTime: new Date(),
+                lastActivity: new Date()
+            });
+        }
+
+        const sessionContext = sessions.get(currentSessionId);
+        sessionContext.lastActivity = new Date();
 
         // Get or create conversation history for this customer
         if (!conversations.has(customerId)) {
@@ -114,7 +142,7 @@ app.post('/api/chat', async (req, res) => {
 
         // Build dynamic prompt using the modular system
         const currentDate = new Date().toLocaleDateString('en-IN');
-        const systemPrompt = buildPrompt(question, currentDate, currentPricing);
+        const systemPrompt = buildPrompt(question, currentDate, currentPricing, sessionContext);
 
         // Build messages array with system prompt + conversation history + new question
         const messages = [
@@ -147,6 +175,7 @@ app.post('/api/chat', async (req, res) => {
         res.json({
             success: true,
             response: response,
+            sessionId: currentSessionId,
             timestamp: new Date().toISOString()
         });
 

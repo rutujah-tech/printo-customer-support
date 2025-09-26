@@ -17,9 +17,10 @@ try {
  * @param {string} userMessage - The user's message/query
  * @param {string} currentDate - Current date string
  * @param {string} currentPricing - Any dynamic pricing data (optional)
+ * @param {object} sessionContext - Session context with previous questions/requirements (optional)
  * @returns {string} - Complete system prompt
  */
-function buildPrompt(userMessage, currentDate, currentPricing = '') {
+function buildPrompt(userMessage, currentDate, currentPricing = '', sessionContext = null) {
     const lowerMessage = userMessage.toLowerCase();
 
     // Product keywords mapping
@@ -77,6 +78,28 @@ function buildPrompt(userMessage, currentDate, currentPricing = '') {
     // Add dynamic pricing if available
     if (currentPricing) {
         prompt += `\n[CURRENT PRICING]\n${currentPricing}\n`;
+    }
+
+    // Add session context if available
+    if (sessionContext) {
+        prompt += '\n[SESSION CONTEXT]\n';
+
+        if (sessionContext.productInterest) {
+            prompt += `Customer is interested in: ${sessionContext.productInterest}\n`;
+        }
+
+        if (sessionContext.questionsAsked && sessionContext.questionsAsked.length > 0) {
+            prompt += `Questions already asked: ${sessionContext.questionsAsked.join(', ')}\n`;
+        }
+
+        if (Object.keys(sessionContext.requirements).length > 0) {
+            prompt += 'Requirements gathered:\n';
+            Object.entries(sessionContext.requirements).forEach(([key, value]) => {
+                prompt += `- ${key}: ${value}\n`;
+            });
+        }
+
+        prompt += '\nIMPORTANT: Use this context to provide relevant follow-up responses. Don\'t repeat questions already answered.\n';
     }
 
     return prompt;

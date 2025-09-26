@@ -1,5 +1,6 @@
 class PrintoCSAssistant {
     constructor() {
+        this.sessionId = localStorage.getItem('printo_session_id') || null;
         this.initializeElements();
         this.bindEvents();
         this.loadHistory();
@@ -91,13 +92,20 @@ class PrintoCSAssistant {
                 },
                 body: JSON.stringify({
                     question,
-                    customerId: 'default-customer'
+                    customerId: 'default-customer',
+                    sessionId: this.sessionId
                 })
             });
 
             const data = await response.json();
 
             if (data.success) {
+                // Store session ID for future requests
+                if (data.sessionId) {
+                    this.sessionId = data.sessionId;
+                    localStorage.setItem('printo_session_id', this.sessionId);
+                }
+
                 this.displayResponse(data.response);
                 this.saveToHistory(question, data.response);
                 this.showNotification('Response generated successfully!');
@@ -195,11 +203,19 @@ class PrintoCSAssistant {
                 this.charCount.style.color = 'var(--color-gray-400)';
             }
 
+            // Clear session
+            this.clearSession();
+
             // Restore opacity
             this.questionInput.style.opacity = '1';
             this.responseArea.style.opacity = '1';
             this.questionInput.focus();
         }, 200);
+    }
+
+    clearSession() {
+        this.sessionId = null;
+        localStorage.removeItem('printo_session_id');
     }
 
     copyResponse() {
