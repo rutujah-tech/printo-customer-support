@@ -132,8 +132,8 @@ app.post('/api/chat', async (req, res) => {
         const completion = await openai.chat.completions.create({
             model: "gpt-4o",
             messages: messages,
-            max_tokens: 500,
-            temperature: 0.7
+            max_tokens: 150,
+            temperature: 0.3
         });
 
         const response = completion.choices[0].message.content;
