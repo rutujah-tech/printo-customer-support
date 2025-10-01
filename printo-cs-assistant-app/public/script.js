@@ -1,6 +1,17 @@
 class PrintoCSAssistant {
     constructor() {
-        this.sessionId = localStorage.getItem('printo_session_id') || null;
+        // Get or generate unique user ID (persists across browser sessions)
+        this.userId = localStorage.getItem('printo_user_id');
+        if (!this.userId) {
+            this.userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('printo_user_id', this.userId);
+        }
+
+        // Generate a new unique session ID for each browser tab
+        // This ensures each tab has its own independent chat session
+        this.tabId = 'tab_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        this.sessionId = null; // Will be created on first message
+
         this.initializeElements();
         this.bindEvents();
         this.loadHistory();
@@ -14,6 +25,7 @@ class PrintoCSAssistant {
         this.getResponseBtn = document.getElementById('getResponse');
         this.clearAllBtn = document.getElementById('clearAll');
         this.copyBtn = document.getElementById('copyResponse');
+        this.newChatBtn = document.getElementById('newChatBtn');
         this.buttonText = document.getElementById('buttonText');
         this.loading = document.getElementById('loading');
         this.historyContainer = document.getElementById('historyContainer');
@@ -61,6 +73,7 @@ class PrintoCSAssistant {
         this.getResponseBtn.addEventListener('click', () => this.getAIResponse());
         this.clearAllBtn.addEventListener('click', () => this.clearAll());
         this.copyBtn.addEventListener('click', () => this.copyResponse());
+        this.newChatBtn.addEventListener('click', () => this.startNewChat());
 
         // Allow Enter + Ctrl/Cmd to submit, or just Enter
         this.questionInput.addEventListener('keydown', (e) => {
@@ -92,7 +105,7 @@ class PrintoCSAssistant {
                 },
                 body: JSON.stringify({
                     question,
-                    customerId: 'default-customer',
+                    userId: this.userId,
                     sessionId: this.sessionId
                 })
             });
@@ -100,14 +113,19 @@ class PrintoCSAssistant {
             const data = await response.json();
 
             if (data.success) {
-                // Store session ID for future requests
+                // Store session ID for future requests in this tab
                 if (data.sessionId) {
                     this.sessionId = data.sessionId;
-                    localStorage.setItem('printo_session_id', this.sessionId);
+                }
+
+                // Store user ID if returned
+                if (data.userId) {
+                    this.userId = data.userId;
+                    localStorage.setItem('printo_user_id', this.userId);
                 }
 
                 this.displayResponse(data.response);
-                this.saveToHistory(question, data.response);
+                this.saveToHistory(question, data.response, this.sessionId);
                 this.showNotification('Response generated successfully!');
             } else {
                 throw new Error(data.error || 'Failed to get response');
@@ -215,7 +233,59 @@ class PrintoCSAssistant {
 
     clearSession() {
         this.sessionId = null;
-        localStorage.removeItem('printo_session_id');
+    }
+
+    async startNewChat() {
+        try {
+            // Create a new session on the server
+            const response = await fetch('/api/sessions/new', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    userId: this.userId
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Clear current session
+                this.clearSession();
+
+                // Set new session ID for this tab
+                this.sessionId = data.sessionId;
+
+                // Clear the UI
+                this.questionInput.value = '';
+                this.responseArea.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M8 9h8M8 13h6" stroke="currentColor" stroke-width="1.5"/>
+                            </svg>
+                        </div>
+                        <h4>New Chat Started</h4>
+                        <p>Enter a customer question to begin</p>
+                    </div>
+                `;
+                this.copyBtn.classList.add('hidden');
+
+                // Update character count
+                if (this.charCount) {
+                    this.charCount.textContent = '0';
+                    this.charCount.style.color = 'var(--color-gray-400)';
+                }
+
+                this.questionInput.focus();
+                this.showNotification('New chat session started! 🚀');
+            }
+        } catch (error) {
+            console.error('Error starting new chat:', error);
+            this.showNotification('Failed to start new chat', 'error');
+        }
     }
 
     copyResponse() {
@@ -256,7 +326,7 @@ class PrintoCSAssistant {
         }
     }
 
-    saveToHistory(question, response) {
+    saveToHistory(question, response, sessionId) {
         let history = this.getHistory();
 
         const historyItem = {
@@ -264,14 +334,16 @@ class PrintoCSAssistant {
             question: question.substring(0, 100) + (question.length > 100 ? '...' : ''),
             response: response,
             timestamp: new Date().toISOString(),
-            fullQuestion: question
+            fullQuestion: question,
+            sessionId: sessionId,
+            userId: this.userId
         };
 
         history.unshift(historyItem);
 
-        // Keep only last 10 items
-        if (history.length > 10) {
-            history = history.slice(0, 10);
+        // Keep only last 20 items (increased from 10)
+        if (history.length > 20) {
+            history = history.slice(0, 20);
         }
 
         localStorage.setItem('printo_cs_history', JSON.stringify(history));

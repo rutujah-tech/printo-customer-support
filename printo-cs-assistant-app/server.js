@@ -15,16 +15,29 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
 
-// Store conversation history per customer (in-memory storage)
-const conversations = new Map();
+// Store conversation history per session (in-memory storage)
+// Structure: Map<sessionId, { userId, messages: [], metadata }>
+const sessionConversations = new Map();
 
-// Store session context (questions asked, product interest, requirements gathered)
-const sessions = new Map();
+// Generate unique user ID
+function generateUserId() {
+    return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
 
 // Generate unique session ID
 function generateSessionId() {
     return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
+
+// Clean up old sessions (older than 24 hours)
+setInterval(() => {
+    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+    for (const [sessionId, session] of sessionConversations.entries()) {
+        if (session.lastActivity < oneDayAgo) {
+            sessionConversations.delete(sessionId);
+        }
+    }
+}, 60 * 60 * 1000); // Run every hour
 
 // Function to fetch pricing from printo.in
 async function fetchProductPricing(productQuery) {
@@ -85,14 +98,16 @@ app.get('/', (req, res) => {
 // Chat endpoint
 app.post('/api/chat', async (req, res) => {
     try {
-        const { question, customerId, sessionId } = req.body;
+        const { question, userId, sessionId } = req.body;
 
         if (!question) {
             return res.status(400).json({ error: 'Question is required' });
         }
 
-        if (!customerId) {
-            return res.status(400).json({ error: 'Customer ID is required' });
+        // Generate or use existing user ID
+        let currentUserId = userId;
+        if (!currentUserId) {
+            currentUserId = generateUserId();
         }
 
         // Generate or use existing session ID
@@ -101,31 +116,30 @@ app.post('/api/chat', async (req, res) => {
             currentSessionId = generateSessionId();
         }
 
-        // Get or create session context
-        if (!sessions.has(currentSessionId)) {
-            sessions.set(currentSessionId, {
-                customerId: customerId,
-                productInterest: null,
-                questionsAsked: [],
-                requirements: {},
-                startTime: new Date(),
-                lastActivity: new Date()
+        // Get or create session
+        if (!sessionConversations.has(currentSessionId)) {
+            sessionConversations.set(currentSessionId, {
+                userId: currentUserId,
+                messages: [],
+                metadata: {
+                    productInterest: null,
+                    questionsAsked: [],
+                    requirements: {},
+                    startTime: Date.now(),
+                    lastActivity: Date.now()
+                }
             });
         }
 
-        const sessionContext = sessions.get(currentSessionId);
-        sessionContext.lastActivity = new Date();
+        const session = sessionConversations.get(currentSessionId);
+        session.metadata.lastActivity = Date.now();
 
-        // Get or create conversation history for this customer
-        if (!conversations.has(customerId)) {
-            conversations.set(customerId, []);
-        }
-
-        const customerHistory = conversations.get(customerId);
+        // Get conversation history for this session
+        const sessionHistory = session.messages;
 
         // Keep only last 2 messages (1 user + 1 assistant) for context
-        if (customerHistory.length >= 4) {
-            customerHistory.splice(0, customerHistory.length - 2);
+        if (sessionHistory.length >= 4) {
+            sessionHistory.splice(0, sessionHistory.length - 2);
         }
 
         // Extract product keywords for pricing lookup
@@ -142,7 +156,7 @@ app.post('/api/chat', async (req, res) => {
 
         // Build dynamic prompt using the modular system
         const currentDate = new Date().toLocaleDateString('en-IN');
-        const systemPrompt = buildPrompt(question, currentDate, currentPricing, sessionContext);
+        const systemPrompt = buildPrompt(question, currentDate, currentPricing, session.metadata);
 
         // Build messages array with system prompt + conversation history + new question
         const messages = [
@@ -150,7 +164,7 @@ app.post('/api/chat', async (req, res) => {
                 role: "system",
                 content: systemPrompt
             },
-            ...customerHistory,
+            ...sessionHistory,
             {
                 role: "user",
                 content: question
@@ -166,8 +180,8 @@ app.post('/api/chat', async (req, res) => {
 
         const response = completion.choices[0].message.content;
 
-        // Add the user question and AI response to conversation history
-        customerHistory.push(
+        // Add the user question and AI response to session history
+        sessionHistory.push(
             { role: "user", content: question },
             { role: "assistant", content: response }
         );
@@ -175,6 +189,7 @@ app.post('/api/chat', async (req, res) => {
         res.json({
             success: true,
             response: response,
+            userId: currentUserId,
             sessionId: currentSessionId,
             timestamp: new Date().toISOString()
         });
@@ -188,15 +203,63 @@ app.post('/api/chat', async (req, res) => {
     }
 });
 
-// Clear conversation history for a customer
-app.delete('/api/conversation/:customerId', (req, res) => {
-    const { customerId } = req.params;
+// Get all sessions for a user
+app.get('/api/sessions/:userId', (req, res) => {
+    const { userId } = req.params;
+    const userSessions = [];
 
-    if (conversations.has(customerId)) {
-        conversations.delete(customerId);
-        res.json({ success: true, message: 'Conversation history cleared' });
+    for (const [sessionId, session] of sessionConversations.entries()) {
+        if (session.userId === userId) {
+            userSessions.push({
+                sessionId,
+                startTime: session.metadata.startTime,
+                lastActivity: session.metadata.lastActivity,
+                messageCount: session.messages.length
+            });
+        }
+    }
+
+    res.json({ success: true, sessions: userSessions });
+});
+
+// Create new session endpoint
+app.post('/api/sessions/new', (req, res) => {
+    const { userId } = req.body;
+
+    if (!userId) {
+        return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    const newSessionId = generateSessionId();
+
+    sessionConversations.set(newSessionId, {
+        userId: userId,
+        messages: [],
+        metadata: {
+            productInterest: null,
+            questionsAsked: [],
+            requirements: {},
+            startTime: Date.now(),
+            lastActivity: Date.now()
+        }
+    });
+
+    res.json({
+        success: true,
+        sessionId: newSessionId,
+        message: 'New session created'
+    });
+});
+
+// Clear specific session
+app.delete('/api/sessions/:sessionId', (req, res) => {
+    const { sessionId } = req.params;
+
+    if (sessionConversations.has(sessionId)) {
+        sessionConversations.delete(sessionId);
+        res.json({ success: true, message: 'Session cleared' });
     } else {
-        res.json({ success: true, message: 'No conversation history found' });
+        res.json({ success: true, message: 'Session not found' });
     }
 });
 

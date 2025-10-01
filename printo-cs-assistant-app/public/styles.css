@@ -179,6 +179,41 @@ body {
   letter-spacing: -0.025em;
 }
 
+.nav-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+}
+
+#newChatBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-4);
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: var(--gradient-blue);
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+#newChatBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+#newChatBtn:active {
+  transform: translateY(0);
+}
+
+#newChatBtn svg {
+  stroke-width: 2.5;
+}
+
 .status-indicator {
   display: flex;
   align-items: center;
