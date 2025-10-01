@@ -6,10 +6,17 @@ let systemPrompt = '';
 let productsData = {};
 
 try {
-    systemPrompt = fs.readFileSync(path.join(__dirname, 'system_prompt.txt'), 'utf8');
+    // Try loading from system_prompt folder first, fallback to root
+    try {
+        systemPrompt = fs.readFileSync(path.join(__dirname, 'system_prompt', 'system_prompt.txt'), 'utf8');
+    } catch {
+        systemPrompt = fs.readFileSync(path.join(__dirname, 'system_prompt.txt'), 'utf8');
+    }
     productsData = JSON.parse(fs.readFileSync(path.join(__dirname, 'products.json'), 'utf8'));
+    console.log('✅ System prompt loaded successfully');
 } catch (error) {
-    console.error('Error loading prompt files:', error.message);
+    console.error('❌ Error loading prompt files:', error.message);
+    console.error('Current directory:', __dirname);
 }
 
 /**
