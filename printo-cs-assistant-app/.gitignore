@@ -1,0 +1,240 @@
+# ============================================
+# PRINTO CS ASSISTANT - GITIGNORE
+# For AWS Lightsail Deployment
+# ============================================
+
+# ============================================
+# Environment & Secrets
+# ============================================
+.env
+.env.local
+.env.*.local
+.env.botspace
+.env.production
+*.pem
+*.key
+credentials.json
+service-account.json
+google-credentials.json
+private-key.json
+
+# ============================================
+# Dependencies
+# ============================================
+node_modules/
+package-lock.json
+
+# ============================================
+# Build & Deployment Artifacts
+# ============================================
+*.zip
+*.tar.gz
+dist/
+build/
+deployment-temp/
+aws-deployment/
+aws-deployment*/
+
+# ============================================
+# Testing & Debug Files
+# ============================================
+test-*.js
+*-test.js
+test-*.html
+debug-*.js
+*-debug.js
+*-debug.html
+*.test.js
+coverage/
+
+# Test outputs
+test-*.txt
+test-output-*.txt
+test-pack.txt
+test-results.txt
+prompt-log-*.json
+
+# Debug outputs
+debug-*.txt
+debug-prompt-output.txt
+nul
+
+# ============================================
+# Documentation (Keep Only Core README)
+# ============================================
+*-SUMMARY.md
+*-GUIDE.md
+*-CHECKLIST.md
+*-INSTRUCTIONS.md
+*-ANALYSIS.md
+*-IMPLEMENTATION.md
+*-INTEGRATION.md
+*-UPDATE.md
+*-FIX.md
+*-REPORT.md
+*-REFERENCE.md
+CLAUDE.md
+AI-*.md
+AWS-*.md
+BOTSPACE-*.md
+CALENDAR-*.md
+CONVERSATION-*.md
+DATA-*.md
+DEPLOYMENT-*.md
+FEATURE-*.md
+FILTERING-*.md
+KNOWN-ISSUES.md
+LINK-*.md
+MESSAGE-*.md
+MISSING-*.md
+PROMPT-*.md
+QUALITY-*.md
+QUICK-*.md
+SCHEDULING-*.md
+SCRAPER-*.md
+SHEET3-*.md
+SMART-*.md
+SYSTEM-*.md
+UTM-*.md
+VERSION-*.md
+WORKFLOW-*.md
+
+# ============================================
+# Scrapers & Data Collection Scripts
+# ============================================
+scraper.js
+scraper-*.js
+scrape-*.js
+enhanced-scraper.js
+*-scraper.js
+
+# ============================================
+# Temporary & Generated Data Files
+# ============================================
+# Keep scraped_products.json (main product catalog)
+calendar-*.json
+new-products-*.json
+newly_scraped_products.json
+user_requested_products.json
+pia-sample-response.json
+products.json
+fixed-productmap.txt
+
+# ============================================
+# HTML Debug/Test Files
+# ============================================
+*-debug.html
+calendars-debug.html
+corporate-gifting-debug.html
+page-debug.html
+
+# ============================================
+# Screenshots & Images
+# ============================================
+*.png
+*.jpg
+*.jpeg
+*.gif
+# Except if you have logo/assets in public
+!public/assets/**/*.png
+!public/assets/**/*.jpg
+
+# ============================================
+# Scripts & Automation (Local Only)
+# ============================================
+*.bat
+*.sh
+*.ps1
+run-*.bat
+setup-*.bat
+setup-*.ps1
+create-*.bat
+deploy.sh
+ecosystem.config.js
+
+# ============================================
+# Analysis & Utility Scripts (Not for Production)
+# ============================================
+analyze-*.js
+check-*.js
+clear-*.js
+compare-*.js
+convert-*.js
+diagnose-*.js
+generate-*.js
+show-*.js
+aggregate-*.js
+dataExtractor.js
+realtime-aggregator.js
+scheduler.js
+url-shortener.js
+url-validator.js
+
+# ============================================
+# Old/Backup Files
+# ============================================
+*-backup.js
+*-old.js
+*-full.js
+*-optimized.js
+*.backup
+*.bak
+*.old
+
+# ============================================
+# Prompt Test Files
+# ============================================
+prompt-*.txt
+
+# ============================================
+# OS Files
+# ============================================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ============================================
+# IDE/Editor
+# ============================================
+.vscode/
+.idea/
+*.sublime-*
+
+# ============================================
+# Logs
+# ============================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ============================================
+# PM2
+# ============================================
+.pm2/
+pids/
+*.pid
+
+# ============================================
+# AWS Elastic Beanstalk (Old)
+# ============================================
+.ebignore
+.elasticbeanstalk/
+.ebextensions/
+
+# ============================================
+# Lambda (Old Serverless)
+# ============================================
+lambda.js
+.serverless/
+
+# ============================================
+# Temporary
+# ============================================
+temp/
+tmp/
+*.tmp

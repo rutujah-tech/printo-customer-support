@@ -557,6 +557,18 @@ kbd {
   font-style: italic;
 }
 
+.response-content a {
+  color: var(--color-primary-400);
+  text-decoration: underline;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.response-content a:hover {
+  color: var(--color-primary-300);
+  text-decoration: underline;
+}
+
 /* Enhanced Empty States */
 .empty-state {
   display: flex;

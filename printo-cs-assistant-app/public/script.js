@@ -98,6 +98,10 @@ class PrintoCSAssistant {
         this.setLoading(true);
 
         try {
+            // Add 60 second timeout for the request
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
+
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
@@ -107,8 +111,11 @@ class PrintoCSAssistant {
                     question,
                     userId: this.userId,
                     sessionId: this.sessionId
-                })
+                }),
+                signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
 
             const data = await response.json();
 
@@ -133,8 +140,19 @@ class PrintoCSAssistant {
 
         } catch (error) {
             console.error('Error:', error);
-            this.displayError('Failed to get AI response. Please try again.');
-            this.showNotification('Error getting response', 'error');
+
+            // More specific error messages
+            let errorMessage = 'Failed to get AI response. Please try again.';
+            if (error.name === 'AbortError') {
+                errorMessage = 'Request timed out. The server is taking too long to respond. Please try again.';
+            } else if (error.message && error.message.includes('network')) {
+                errorMessage = 'Network error. Please check your internet connection.';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
+            this.displayError(errorMessage);
+            this.showNotification('Error: ' + errorMessage, 'error');
         }
 
         this.setLoading(false);
@@ -144,11 +162,16 @@ class PrintoCSAssistant {
         // Store the original response for copying
         this.lastResponse = response;
 
+        console.log('Original response:', response);
+
         // Convert Markdown-style formatting to HTML
         const formattedResponse = response
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')  // Markdown links
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold text
             .replace(/\*(.*?)\*/g, '<em>$1</em>')              // Italic text
             .replace(/\n/g, '<br>');                           // Line breaks
+
+        console.log('Formatted response:', formattedResponse);
 
         // Create response content container
         const responseContent = document.createElement('div');
