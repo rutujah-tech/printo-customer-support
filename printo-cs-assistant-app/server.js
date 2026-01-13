@@ -8,9 +8,6 @@ const { buildPrompt } = require('./promptBuilder');
 const GoogleSheetsLogger = require('./google-sheets-logger');
 const BotSpaceService = require('./botspace-service');
 const { addUTMToResponse } = require('./utm-tracker');
-const { getPhoneFromBotspaceResponse } = require('./phone-extractor');
-const { getOrdersByMobile } = require('./pia-api-client');
-const { formatOrdersForWhatsApp, formatErrorMessage, formatOrderDetails } = require('./order-status-formatter');
 require('dotenv').config();
 
 const app = express();
@@ -119,68 +116,6 @@ async function fetchProductPricing(productQuery) {
     }
 }
 
-// Function to handle order status queries from BotSpace
-async function handleOrderStatusQuery(botspaceResponse, session) {
-    try {
-        console.log('📞 Processing order status query from BotSpace');
-
-        // Extract phone number from BotSpace response
-        const phone = getPhoneFromBotspaceResponse(botspaceResponse);
-
-        if (!phone) {
-            return {
-                success: false,
-                message: 'Please provide a valid 10-digit mobile number to check your order status.'
-            };
-        }
-
-        console.log(`✅ Extracted phone: ${phone}`);
-
-        // Query PIA API
-        const result = await getOrdersByMobile(phone);
-
-        if (!result.success) {
-            // Handle errors
-            if (result.error === 'TOKEN_EXPIRED') {
-                console.error('⚠️  PIA token expired');
-            }
-            const errorMsg = formatErrorMessage(result.error);
-            return {
-                success: false,
-                message: errorMsg
-            };
-        }
-
-        // Check if orders found
-        if (!result.orders || result.orders.length === 0) {
-            return {
-                success: true,
-                message: `I couldn't find any orders for mobile number ${phone}.\n\nPossible reasons:\n• Order was placed with a different number\n• Order is more than 6 months old\n\nPlease check your order confirmation email or contact support: 1800-XXX-XXXX`
-            };
-        }
-
-        // Format orders for WhatsApp
-        const page = session.metadata.orderPage || 0;
-        const formattedMessage = formatOrdersForWhatsApp(result.orders, page);
-
-        // Store orders in session for pagination
-        session.metadata.currentOrders = result.orders;
-        session.metadata.orderPage = page;
-
-        return {
-            success: true,
-            message: formattedMessage,
-            ordersCount: result.count
-        };
-
-    } catch (error) {
-        console.error('❌ Order status query error:', error.message);
-        return {
-            success: false,
-            message: 'Unable to fetch order status. Please try again or contact support: 1800-XXX-XXXX'
-        };
-    }
-}
 
 // Middleware
 app.use(cors());
@@ -232,50 +167,6 @@ app.post('/api/chat', async (req, res) => {
 
         const session = sessionConversations.get(currentSessionId);
         session.metadata.lastActivity = Date.now();
-
-        // ============================================
-        // ORDER STATUS DETECTION
-        // ============================================
-        // Check if this is an order status query (contains phone number)
-        const phoneExtraction = require('./phone-extractor');
-        const potentialPhone = phoneExtraction.getPhoneFromBotspaceResponse(question);
-
-        if (potentialPhone) {
-            // This appears to be an order status query with a phone number
-            console.log('📞 Order status query detected with phone:', potentialPhone);
-
-            const orderStatusResult = await handleOrderStatusQuery(question, session);
-
-            if (orderStatusResult.success) {
-                // Log to Google Sheets
-                sheetsLogger.logConversation({
-                    sessionId: currentSessionId,
-                    userInput: question,
-                    botResponse: orderStatusResult.message,
-                    product: 'Order Status',
-                    pincode: null,
-                    status: 'success',
-                    responseTime: Date.now() - startTime
-                }).catch(err => console.error('Background logging error:', err.message));
-
-                // Add to session history
-                session.messages.push(
-                    { role: "user", content: question },
-                    { role: "assistant", content: orderStatusResult.message }
-                );
-
-                return res.json({
-                    success: true,
-                    response: orderStatusResult.message,
-                    userId: currentUserId,
-                    sessionId: currentSessionId,
-                    timestamp: new Date().toISOString(),
-                    orderStatus: true,
-                    ordersCount: orderStatusResult.ordersCount || 0
-                });
-            }
-            // If order status query failed, fall through to normal chat flow
-        }
 
         // Get conversation history for this session
         const sessionHistory = session.messages;

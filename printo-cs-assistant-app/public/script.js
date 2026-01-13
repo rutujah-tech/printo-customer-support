@@ -95,6 +95,13 @@ class PrintoCSAssistant {
             return;
         }
 
+        // ============================================
+        // DEBUG: Log user input
+        // ============================================
+        console.log('%c📤 Sending Question to API', 'background: #4CAF50; color: white; padding: 5px; font-weight: bold; font-size: 14px;');
+        console.log('Question:', question);
+        console.log('Time:', new Date().toLocaleTimeString());
+
         this.setLoading(true);
 
         try {
@@ -119,6 +126,37 @@ class PrintoCSAssistant {
 
             const data = await response.json();
 
+            // ============================================
+            // DEBUG: Log full API response to console
+            // ============================================
+            console.log('%c📥 Received API Response', 'background: #2196F3; color: white; padding: 5px; font-weight: bold; font-size: 14px;');
+            console.group('🔍 API Response Debug');
+            console.log('%cFull Response Object:', 'font-weight: bold; color: #2196F3;', data);
+            console.log('%cResponse Text:', 'font-weight: bold; color: #4CAF50;', data.response);
+            console.log('✅ Success:', data.success);
+            console.log('🆔 Session ID:', data.sessionId);
+            console.log('👤 User ID:', data.userId);
+
+            // Log order status specific fields if present
+            if (data.orderStatus) {
+                console.log('%c📦 ORDER STATUS QUERY DETECTED!', 'background: #FF9800; color: white; padding: 3px; font-weight: bold;');
+                console.log('Orders Count:', data.ordersCount);
+            }
+
+            console.log('⏰ Timestamp:', data.timestamp);
+            console.log('%c📋 Full JSON Response:', 'font-weight: bold; color: #9C27B0;');
+            console.log(JSON.stringify(data, null, 2));
+            console.groupEnd();
+
+            // Also log as table for better readability
+            console.table({
+                'Success': data.success,
+                'Order Status': data.orderStatus || false,
+                'Orders Count': data.ordersCount || 'N/A',
+                'Session ID': data.sessionId,
+                'Timestamp': data.timestamp
+            });
+
             if (data.success) {
                 // Store session ID for future requests in this tab
                 if (data.sessionId) {
@@ -133,7 +171,13 @@ class PrintoCSAssistant {
 
                 this.displayResponse(data.response);
                 this.saveToHistory(question, data.response, this.sessionId);
-                this.showNotification('Response generated successfully!');
+
+                // Show different notification for order status vs normal chat
+                if (data.orderStatus) {
+                    this.showNotification(`Order status retrieved! ${data.ordersCount || 0} order(s) found`);
+                } else {
+                    this.showNotification('Response generated successfully!');
+                }
             } else {
                 throw new Error(data.error || 'Failed to get response');
             }
