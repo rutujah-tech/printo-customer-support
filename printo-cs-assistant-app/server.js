@@ -1,13 +1,15 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const { OpenAI } = require('openai');
 const axios = require('axios');
 const cheerio = require('cheerio');
-const { buildPrompt } = require('./promptBuilder');
+const { buildPrompt, reloadProductData, getProductDataStatus} = require('./promptBuilder');
 const GoogleSheetsLogger = require('./google-sheets-logger');
 const BotSpaceService = require('./botspace-service');
 const { addUTMToResponse } = require('./utm-tracker');
+const { logUpdate, getHistory, getStats, getHealthStatus } = require('./update-tracker');
 require('dotenv').config();
 
 const app = express();
@@ -121,6 +123,10 @@ async function fetchProductPricing(productQuery) {
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Mount Existing Order Status System (independent webhook)
+const existingOrderWebhook = require('./existing-order/webhook');
+app.use('/api', existingOrderWebhook);
 
 // Serve the main HTML file
 app.get('/', (req, res) => {
@@ -616,6 +622,141 @@ app.post('/debug/test-log', async (req, res) => {
         });
     }
 });
+
+// ================== PRODUCT DATA RELOAD ENDPOINTS ==================
+
+/**
+ * POST /admin/reload-products
+ * Manually reload product data without server restart
+ */
+app.post('/admin/reload-products', (req, res) => {
+    try {
+        console.log('\n📦 [ADMIN] Manual product reload requested');
+
+        const result = reloadProductData();
+
+        if (result.success) {
+            res.json({
+                success: true,
+                message: 'Product data reloaded successfully',
+                data: {
+                    manualProducts: result.productsCount,
+                    scrapedProducts: result.scrapedCount,
+                    totalProducts: result.productsCount + result.scrapedCount,
+                    reloadedAt: result.timestamp
+                },
+                timestamp: new Date().toISOString()
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                error: 'Failed to reload product data',
+                message: result.message
+            });
+        }
+    } catch (error) {
+        console.error('❌ [ADMIN] Reload error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            message: error.message
+        });
+    }
+});
+
+/**
+ * GET /admin/product-data-status
+ * Get current product data load status
+ */
+app.get('/admin/product-data-status', (req, res) => {
+    try {
+        const status = getProductDataStatus();
+
+        res.json({
+            success: true,
+            status: status,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * GET /admin/update-history
+ * Get product update history
+ */
+app.get('/admin/update-history', (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 10;
+        const history = getHistory(limit);
+
+        res.json({
+            success: true,
+            history: history,
+            count: history.length,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * GET /admin/update-stats
+ * Get product update statistics
+ */
+app.get('/admin/update-stats', (req, res) => {
+    try {
+        const stats = getStats();
+        const health = getHealthStatus();
+
+        res.json({
+            success: true,
+            stats: stats,
+            health: health,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// ================== AUTO FILE WATCHER ==================
+
+// Watch scraped_products.json for changes and auto-reload
+const scrapedProductsPath = path.join(__dirname, 'scraped_products.json');
+
+if (fs.existsSync(scrapedProductsPath)) {
+    console.log('👀 Watching scraped_products.json for changes...');
+
+    fs.watch(scrapedProductsPath, (eventType, filename) => {
+        if (eventType === 'change') {
+            console.log(`\n📦 [AUTO-RELOAD] scraped_products.json changed, reloading...`);
+
+            // Add a small delay to ensure file write is complete
+            setTimeout(() => {
+                const result = reloadProductData();
+                if (result.success) {
+                    console.log('✅ [AUTO-RELOAD] Product data reloaded successfully');
+                } else {
+                    console.error('❌ [AUTO-RELOAD] Failed to reload:', result.message);
+                }
+            }, 500);
+        }
+    });
+} else {
+    console.log('ℹ️  scraped_products.json not found - file watcher not started');
+}
 
 app.listen(PORT, async () => {
     console.log(`🚀 Printo CS Assistant running on http://localhost:${PORT}`);
