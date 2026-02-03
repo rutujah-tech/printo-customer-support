@@ -1,0 +1,54 @@
+name: Deploy WIZ Product Recommender to Lightsail
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'wiz-product-recommender/**'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.LIGHTSAIL_SSH_KEY }}" > ~/.ssh/lightsail-key.pem
+          chmod 600 ~/.ssh/lightsail-key.pem
+          ssh-keyscan -H ${{ secrets.LIGHTSAIL_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Lightsail
+        run: |
+          # Create deployment package
+          cd wiz-product-recommender
+
+          # Upload files to Lightsail
+          rsync -avz --delete \
+            --exclude 'node_modules' \
+            --exclude '.env' \
+            --exclude 'google-credentials.json' \
+            --exclude '.git' \
+            --exclude '*.md' \
+            -e "ssh -i ~/.ssh/lightsail-key.pem" \
+            ./ bitnami@${{ secrets.LIGHTSAIL_HOST }}:/opt/bitnami/projects/wiz-product-recommender/
+
+      - name: Install dependencies and restart
+        run: |
+          ssh -i ~/.ssh/lightsail-key.pem bitnami@${{ secrets.LIGHTSAIL_HOST }} << 'EOF'
+            cd /opt/bitnami/projects/wiz-product-recommender
+            npm install --production
+            pm2 restart wiz-recommender || pm2 start server.js --name wiz-recommender
+            pm2 save
+            echo "Deployment complete!"
+          EOF
+
+      - name: Health check
+        run: |
+          sleep 5
+          curl -f http://${{ secrets.LIGHTSAIL_HOST }}:3007/health || echo "Health check endpoint not available"
