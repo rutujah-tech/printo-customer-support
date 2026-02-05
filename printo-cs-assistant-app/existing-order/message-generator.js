@@ -10,6 +10,46 @@ class MessageGenerator {
         this.openai = new OpenAI({
             apiKey: process.env.OPENAI_API_KEY
         });
+
+        // Internal statuses that should be displayed as "In Production" to customers
+        // Using partial matches to handle variations (e.g., "Assigned Printing" vs "Assigned to Printing")
+        this.productionStatusKeywords = [
+            'pre-press',
+            'prepress',
+            'ready for os',
+            'qc',
+            'quality',
+            'packing',
+            'outsourced',
+            'vendor',
+            'printing',
+            'postpress',
+            'post press',
+            'post-press'
+        ];
+    }
+
+    /**
+     * Map internal status to customer-friendly status
+     * Centralizes status display logic - does not modify stored values
+     * @param {string} status - Internal status from PIA
+     * @returns {string} - Customer-friendly status
+     */
+    mapStatusForDisplay(status) {
+        if (!status) return 'Processing';
+
+        const normalizedStatus = status.toLowerCase().trim();
+
+        // Check if status contains any production-related keyword
+        const isProduction = this.productionStatusKeywords.some(keyword =>
+            normalizedStatus.includes(keyword)
+        );
+
+        if (isProduction) {
+            return 'In Production';
+        }
+
+        return status;
     }
 
     /**
@@ -27,10 +67,10 @@ class MessageGenerator {
                 return this.getNoActiveOrdersMessage(phone);
             }
 
-            // Build order data for GPT
+            // Build order data for GPT (apply status mapping for display)
             const orderData = activeOrders.map(order => ({
                 jobId: order.jobId,
-                status: order.status,
+                status: this.mapStatusForDisplay(order.status),
                 product: order.productName,
                 quantity: order.quantity,
                 promisedDate: order.promisedDate
@@ -43,16 +83,17 @@ Guidelines:
 - Be warm, professional, and helpful
 - Use simple, easy-to-understand language
 - Keep the message SHORT (2-4 sentences max)
-- Include Job ID(s) and current status
+- Include Order ID(s) and current status
 - If multiple orders, list them clearly
-- Use *bold* for important details like Job IDs and status
+- Use *bold* for important details like Order IDs and status
 - End with a helpful note if needed
 - Do NOT add greetings or sign-offs
 - Be direct and to the point
+- IMPORTANT: Use "Order ID" (not "Job ID") - customers know their PJ order numbers
 
 Example formats:
-- Single order: "Your order *Job ID: WEBKA/12345* is currently in *Production* and will be ready by Jan 30th."
-- Multiple orders: "You have 2 active orders:\n1. *Job ID: WEBKA/12345* - *In Production*\n2. *Job ID: WEBKA/12346* - *Quality Check*"`;
+- Single order: "Your order *PJ123456* is currently in *Production* and will be ready by Jan 30th."
+- Multiple orders: "You have 2 active orders:\n1. *PJ123456* - *In Production*\n2. *PJ123457* - *Quality Check*"`;
 
             const userPrompt = `Generate a status message for the following order(s):
 
@@ -102,12 +143,14 @@ If you recently placed an order, it may take a few minutes to reflect in our sys
     getFallbackMessage(activeOrders) {
         if (activeOrders.length === 1) {
             const order = activeOrders[0];
-            return `Your order *${order.jobId}* is currently *${order.status}*.`;
+            const displayStatus = this.mapStatusForDisplay(order.status);
+            return `Your order *${order.jobId}* is currently *${displayStatus}*.`;
         }
 
         let message = `You have ${activeOrders.length} active orders:\n`;
         activeOrders.slice(0, 5).forEach((order, index) => {
-            message += `${index + 1}. *${order.jobId}* - *${order.status}*\n`;
+            const displayStatus = this.mapStatusForDisplay(order.status);
+            message += `${index + 1}. *${order.jobId}* - *${displayStatus}*\n`;
         });
 
         return message.trim();
