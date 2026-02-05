@@ -409,22 +409,23 @@ Common FAQs:
         });
     }
 
-    // Add scraped products context if found
-    if (relevantScrapedProducts.length > 0) {
+    // Add scraped products context if found (limit to 30 products max to avoid token limits)
+    const limitedProducts = relevantScrapedProducts.slice(0, 30);
+    if (limitedProducts.length > 0) {
         prompt += '\n\n[PRODUCT CONTEXT - Live Website Data]\n';
-        prompt += `Found ${relevantScrapedProducts.length} products from printo.in:\n\n`;
+        prompt += `Found ${limitedProducts.length} relevant products from printo.in:\n\n`;
 
         // Group scraped products by category
         const groupedByCategory = {};
-        relevantScrapedProducts.forEach(product => {
+        limitedProducts.forEach(product => {
             if (!groupedByCategory[product.category]) {
                 groupedByCategory[product.category] = [];
             }
             groupedByCategory[product.category].push(product);
         });
 
-        // Display grouped products
-        Object.entries(groupedByCategory).forEach(([category, products]) => {
+        // Display grouped products (limit to 5 categories max)
+        Object.entries(groupedByCategory).slice(0, 5).forEach(([category, products]) => {
             prompt += `${category} (${products.length} options):\n`;
 
             // Show category link with UTM tracking
@@ -434,8 +435,8 @@ Common FAQs:
                 prompt += `Browse all: ${trackedCategoryLink}\n\n`;
             }
 
-            // List products (limit to 10 per category to avoid overwhelming)
-            products.slice(0, 10).forEach(product => {
+            // List products (limit to 5 per category to avoid token limits)
+            products.slice(0, 5).forEach(product => {
                 prompt += `- ${product.name}\n`;
                 prompt += `  Price: ${product.price}\n`;
                 if (product.link || product.url) {
@@ -445,8 +446,8 @@ Common FAQs:
                 }
             });
 
-            if (products.length > 10) {
-                prompt += `\n... and ${products.length - 10} more options\n`;
+            if (products.length > 5) {
+                prompt += `\n... and ${products.length - 5} more options\n`;
             }
             prompt += '\n';
         });
@@ -482,4 +483,49 @@ Common FAQs:
     return prompt;
 }
 
-module.exports = { buildPrompt };
+/**
+ * Reload product data (for hot-reload without server restart)
+ */
+function reloadProductData() {
+    try {
+        // Reload products.json
+        try {
+            productsData = JSON.parse(fs.readFileSync(path.join(__dirname, 'system_prompt', 'products.json'), 'utf8'));
+        } catch {
+            productsData = JSON.parse(fs.readFileSync(path.join(__dirname, 'products.json'), 'utf8'));
+        }
+
+        // Reload scraped products
+        try {
+            const scrapedData = JSON.parse(fs.readFileSync(path.join(__dirname, 'scraped_products.json'), 'utf8'));
+            scrapedProducts = scrapedData.products || [];
+        } catch {
+            scrapedProducts = [];
+        }
+
+        console.log(`✅ Reloaded: ${Object.keys(productsData).length} manual + ${scrapedProducts.length} scraped products`);
+
+        return {
+            success: true,
+            productsCount: Object.keys(productsData).length,
+            scrapedCount: scrapedProducts.length,
+            timestamp: new Date().toISOString()
+        };
+    } catch (error) {
+        console.error('❌ Reload failed:', error.message);
+        return { success: false, message: error.message };
+    }
+}
+
+/**
+ * Get product data status
+ */
+function getProductDataStatus() {
+    return {
+        manualProductsCount: Object.keys(productsData).length,
+        scrapedProductsCount: scrapedProducts.length,
+        totalProducts: Object.keys(productsData).length + scrapedProducts.length
+    };
+}
+
+module.exports = { buildPrompt, reloadProductData, getProductDataStatus };
